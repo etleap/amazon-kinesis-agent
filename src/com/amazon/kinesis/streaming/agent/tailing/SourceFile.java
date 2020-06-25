@@ -16,12 +16,16 @@ package com.amazon.kinesis.streaming.agent.tailing;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Stream;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -66,15 +70,33 @@ public class SourceFile {
         if(!Files.exists(this.directory))
             return TrackedFileList.emptyList();
 
-        List<TrackedFile> files = new ArrayList<>();
-        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(this.directory)) {
-            for (Path p : directoryStream) {
-                if (this.pathMatcher.matches(p.getFileName()) && validateFile(p)) {
-                    files.add(new TrackedFile(flow, p));
-                }
+        final List<TrackedFile> files = new ArrayList<>();
+        Files.walkFileTree(this.directory, new FileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                return FileVisitResult.CONTINUE;
             }
-        }
-        // sort the files by decsending last modified time and return
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (pathMatcher.matches(file.getFileName()) && validateFile(file)) {
+                    files.add(new TrackedFile(flow, file));
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                return FileVisitResult.CONTINUE;
+            }
+        });
+
+        // sort the files by descending last modified time and return
         Collections.sort(files, new TrackedFile.NewestFirstComparator());
         return new TrackedFileList(files);
     }

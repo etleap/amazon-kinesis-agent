@@ -138,6 +138,20 @@ public class SourceFileTest extends TestBase {
         Assert.assertEquals(src.listFiles().size(), 0);
     }
 
+    @Test
+    public void testListFoldersRecursively() throws IOException {
+        Path test = Files.createTempDirectory("test");
+        Path one = Files.createDirectory(test.resolve("something1"));
+        Path two = Files.createDirectory(test.resolve("something2"));
+        Files.createFile(one.resolve("a.log"));
+        Files.createFile(two.resolve("a.log"));
+        SourceFile src = new SourceFile(null, test.toString() + "/*");
+        TrackedFileList trackedFiles = src.listFiles();
+        Assert.assertEquals(trackedFiles.size(), 2);
+        Path[] expectedFiles = new Path[] {one.resolve("a.log"), two.resolve("a.log")};
+        Assert.assertEquals(toPathList(trackedFiles).toArray(), expectedFiles);
+    }
+
     @Test(dataProvider = "listAndCountFiles")
     public void testCountFiles(String fileGlob, String[] matchingNames, String[] nonMatchingNames)
             throws InterruptedException, IOException {
