@@ -47,11 +47,10 @@ public class SourceFile {
         this.flow = flow;
         // fileName
         Preconditions.checkArgument(!filePattern.endsWith("/"), "File name component is empty!");
-        Path filePath = FileSystems.getDefault().getPath(filePattern);
+        this.filePattern = FileSystems.getDefault().getPath(filePattern);
         // TODO: this does not handle globs in directory component: e.g. /opt/*/logs/app.log, /opt/**/app.log*
-        this.directory = filePath.getParent();
+        this.directory = this.filePattern.getParent();
         validateDirectory(this.directory);
-        this.filePattern = filePath.getFileName();
         this.pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + this.filePattern.toString());
     }
 
@@ -79,7 +78,7 @@ public class SourceFile {
 
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (pathMatcher.matches(file.getFileName()) && validateFile(file)) {
+                if (pathMatcher.matches(file) && validateFile(file)) {
                     files.add(new TrackedFile(flow, file));
                 }
                 return FileVisitResult.CONTINUE;
